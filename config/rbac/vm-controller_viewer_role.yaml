@@ -1,0 +1,27 @@
+# permissions for end users to view vm-controllers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: vm-controller-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: vm-controller
+    app.kubernetes.io/part-of: vm-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: vm-controller-viewer-role
+rules:
+- apiGroups:
+  - aws.my.domain
+  resources:
+  - vm-controllers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - aws.my.domain
+  resources:
+  - vm-controllers/status
+  verbs:
+  - get

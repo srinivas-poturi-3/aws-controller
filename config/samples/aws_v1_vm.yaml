@@ -1,0 +1,12 @@
+apiVersion: aws.my.controller/v1
+kind: Vm
+metadata:
+  labels:
+    app.kubernetes.io/name: vm
+    app.kubernetes.io/instance: vm-sample
+    app.kubernetes.io/part-of: vm-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: vm-controller
+  name: vm-sample
+spec:
+  

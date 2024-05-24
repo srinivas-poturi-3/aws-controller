@@ -1,0 +1,5 @@
+## Append samples of your project ##
+resources:
+- aws_v1_vm-controller.yaml
+- aws_v1_vm.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

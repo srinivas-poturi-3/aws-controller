@@ -1,0 +1,12 @@
+apiVersion: aws.my.domain/v1
+kind: Vm-controller
+metadata:
+  labels:
+    app.kubernetes.io/name: vm-controller
+    app.kubernetes.io/instance: vm-controller-sample
+    app.kubernetes.io/part-of: vm-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: vm-controller
+  name: vm-controller-sample
+spec:
+  # TODO(user): Add fields here
