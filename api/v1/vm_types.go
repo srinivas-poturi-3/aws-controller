@@ -28,24 +28,30 @@ type VmSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Region        string `json:"region,omitempty"`
-	InstanceType  string `json:"instanceType,omitempty"`
-	KeyName       string `json:"keyName,omitempty"`
-	SecurityGroup string `json:"securityGroup,omitempty"`
-	Subnet        string `json:"subnet,omitempty"`
-	ImageId       string `json:"imageId,omitempty"`
-	UserData      string `json:"userData,omitempty"`
-	MaxCount      int    `json:"maxCount,omitempty"`
-	MinCount      int    `json:"minCount,omitempty"`
+	Name               string   `json:"Name,omitempty"`
+	MaxCount           int      `json:"MaxCount,omitempty"`
+	MinCount           int      `json:"MinCount,omitempty"`
+	ImageId            string   `json:"ImageId,omitempty"`
+	InstanceType       string   `json:"InstanceType,omitempty"`
+	KeyName            string   `json:"KeyName,omitempty"`
+	SecurityGroupIds   []string `json:"SecurityGroupIds,omitempty"`
+	SubnetId           string   `json:"SubnetId,omitempty"`
+	UserData           string   `json:"UserData,omitempty"`
+	DryRun             bool     `json:"DryRun,omitempty"`
+	IamInstanceProfile string   `json:"IamInstanceProfile,omitempty"`
+	// NetworkInterface              []ec2.InstanceNetworkInterfaceSpecification `json:"NetworkInterface,omitempty"`
+	// BlockDeviceMapping            ec2.BlockDeviceMapping                      `json:"BlockDeviceMapping,omitempty"`
+	// MetadataOptions               ec2.InstanceMetadataOptionsRequest          `json:"MetadataOptions,omitempty"`
+	// PrivateDnsNameOptionsOnLaunch ec2.PrivateDnsNameOptionsOnLaunch           `json:"PrivateDnsNameOptionsOnLaunch,omitempty"`
 }
 
 // VmStatus defines the observed state of Vm
 type VmStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Status     string `json:"status,omitempty"`
-	InstanceId string `json:"instanceId,omitempty"`
-	PrivateIp  string `json:"privateIp,omitempty"`
+	Status   string   `json:"status,omitempty"`
+	Instance []string `json:"instance,omitempty"`
+	Error    string   `json:"error,omitempty"`
 }
 
 // CredentialsSecret defines the reference to the secret containing AWS credentials
@@ -53,8 +59,11 @@ type CredentialsSecret struct {
 	// Name of the secret containing credentials
 	Name string `json:"name"`
 
-	// Namespace where the secret resides (optional)
+	// Namespace where the secret resides
 	Namespace string `json:"namespace,omitempty"`
+
+	// Region of the AWS account
+	Region string `json:"region,omitempty"`
 }
 
 //+kubebuilder:object:root=true

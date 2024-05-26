@@ -3,9 +3,9 @@ package aws
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	awsv1 "github.com/srinivas-poturi-3/aws-controller/api/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -20,12 +20,26 @@ type Creds struct {
 	region      string
 }
 
-func GetSession(ctx context.Context, creds Creds) (*session.Session, error) {
+const (
+	defaultRegion = "us-east-1"
+	accessID      = "accessID"
+	accessKey     = "accessKey"
+	tokenKey      = "tokenKey"
+)
+
+func GetSession(ctx context.Context, creds Creds) (*AwsSession, error) {
+	os.Setenv("AWS_ACCESS_KEY_ID", creds.accessID)
+	os.Setenv("AWS_SECRET_ACCESS_KEY", creds.accessKey)
+	os.Setenv("AWS_SECRET_ACCESS_TOKEN", creds.accessToken)
+
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(creds.region),
-		Credentials: credentials.NewStaticCredentials(creds.accessID, creds.accessKey, creds.accessToken),
+		Region: aws.String(creds.region),
 	})
-	return sess, err
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AWS session: %w", err)
+	}
+
+	return &AwsSession{sess: sess}, err
 }
 
 func GetAWSCredentials(ctx context.Context, k8sClient client.Client, secretRef *awsv1.CredentialsSecret) (Creds, error) {
@@ -39,22 +53,25 @@ func GetAWSCredentials(ctx context.Context, k8sClient client.Client, secretRef *
 
 	creds := Creds{}
 	// Check if required data keys exist
-	if key, ok := secret.Data["accessID"]; !ok {
-		creds.accessID = string(key)
+	if _, ok := secret.Data[accessID]; !ok {
 		return Creds{}, fmt.Errorf("secret %s missing accessID data", secretKey)
 	}
-	if key, ok := secret.Data["accessKey"]; !ok {
-		creds.accessKey = string(key)
+	if _, ok := secret.Data[accessKey]; !ok {
 		return Creds{}, fmt.Errorf("secret %s missing accessKey data", secretKey)
 	}
-	if key, ok := secret.Data["tokenKey"]; !ok {
-		creds.accessToken = string(key)
+	if _, ok := secret.Data[tokenKey]; !ok {
 		return Creds{}, fmt.Errorf("secret %s missing secretKey data", secretKey)
 	}
-	if key, ok := secret.Data["region"]; !ok {
-		creds.region = string(key)
-		return Creds{}, fmt.Errorf("secret %s missing region data", secretKey)
+
+	if secretRef.Region == "" {
+		creds.region = defaultRegion
+	} else {
+		creds.region = secretRef.Region
 	}
+
+	creds.accessID = string(secret.Data[accessID])
+	creds.accessKey = string(secret.Data[accessKey])
+	creds.accessToken = string(secret.Data[tokenKey])
 
 	return creds, nil
 }

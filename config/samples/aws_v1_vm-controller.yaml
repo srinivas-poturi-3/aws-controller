@@ -1,12 +1,21 @@
-apiVersion: aws.my.domain/v1
-kind: Vm-controller
+apiVersion: aws.my.controller/v1
+kind: Vm
 metadata:
   labels:
     app.kubernetes.io/name: vm-controller
-    app.kubernetes.io/instance: vm-controller-sample
     app.kubernetes.io/part-of: vm-controller
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: vm-controller
   name: vm-controller-sample
 spec:
-  # TODO(user): Add fields here
+  Name: "ControllerEC2"
+  imageId: "ami-0f58b397bc5c1f2e8"
+  instanceType: "t2.micro"
+  # KeyName has to be created in AWS console
+  keyName: "Firstkey"
+  minCount: 1
+  maxCount: 1
+credentialsSecretRef:
+  name: "my-secret"
+  namespace: "default"
+  region: "ap-south-1"
