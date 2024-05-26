@@ -21,10 +21,7 @@ import (
 
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -49,6 +46,7 @@ const (
 	stopped     Status = "Stopped"
 	pending     Status = "Pending"
 	failed      Status = "Failed"
+	terminated  Status = "Terminated"
 )
 const (
 	controllerFinalizer string = "aws.my.controller/finalizer"
@@ -118,7 +116,7 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 	// Use AWS SDK for VM management
 	switch {
-	case vm.GetDeletionTimestamp() != nil && vm.Status.Status != string(delete):
+	case vm.GetDeletionTimestamp() != nil && vm.Status.Status == string(running):
 		if controllerutil.ContainsFinalizer(&vm, controllerFinalizer) {
 			// Handle VM deletion
 			err := awsSession.DeleteVM(&vm)
@@ -150,28 +148,24 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 			log.Error(err, "failed to update CRD status")
 			return ctrl.Result{}, err
 		}
-		found := &appsv1.Deployment{}
-		err := r.Get(ctx, types.NamespacedName{Name: vm.Name, Namespace: vm.Namespace}, found)
-		if err != nil && apierrors.IsNotFound(err) {
-			// Create VM
-			err = awsSession.CreateVM(&vm)
-			if err != nil {
-				vm.Status.Status = string(failed)
-				r.Status().Update(ctx, &vm)
-				log.Error(err, "failed to create VM")
-				return ctrl.Result{}, err
-			}
-			vm.Status.Status = string(running)
-			err = r.Status().Update(ctx, &vm)
-			if err != nil {
-				log.Error(err, "failed to update CRD status")
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		// Create VM
+		err = awsSession.CreateVM(&vm)
+		if err != nil {
+			vm.Status.Status = string(failed)
+			r.Status().Update(ctx, &vm)
+			log.Error(err, "failed to create VM")
+			return ctrl.Result{}, err
 		}
+		vm.Status.Status = string(running)
+		err = r.Status().Update(ctx, &vm)
+		if err != nil {
+			log.Error(err, "failed to update CRD status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 
-	default:
-		// Handle VM status updates
+	// Handle VM status updates
+	case (vm.Status.Status == string(running) || vm.Status.Status == string(delete)) && len(vm.Status.InstanceStatus) != 0:
 		err := awsSession.GetExistingVM(&vm)
 		if err != nil {
 			log.Error(err, "failed to check existing VM")

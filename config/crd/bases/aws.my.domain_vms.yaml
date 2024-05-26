@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.13.0
-  name: vms.aws.my.domain
+  name: vms.aws.my.controller
 spec:
-  group: aws.my.domain
+  group: aws.my.controller
   names:
     kind: Vm
     listKind: VmList
