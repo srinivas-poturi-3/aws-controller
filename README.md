@@ -1,8 +1,13 @@
 # aws-controller
-// TODO(user): Add simple overview of use/purpose
+Custom controller to manage AWS EC2 instance.
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+This repository implements a custom Kubernetes controller built with Kubebuilder to manage AWS EC2 instances.
+
+### Key Features:
+
+Creates, updates, and deletes EC2 instances.
+Requires pre-configured AWS secrets for access credentials.
 
 ## Getting Started
 
@@ -11,6 +16,7 @@
 - docker version 17.03+.
 - kubectl version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
+- AWS account with appropriate permissions
 
 ### To Deploy on the cluster
 **Build and push your image to the location specified by `IMG`:**
@@ -24,6 +30,12 @@ And it is required to have access to pull the image from the working environment
 Make sure you have the proper permission to the registry if the above commands don’t work.
 
 **Install the CRDs into the cluster:**
+
+```sh
+kubectl apply -f config/crd/bases/aws.my.controller_vms.yaml
+```
+
+**Install the Manager into the cluster:**
 
 ```sh
 make install
@@ -65,13 +77,6 @@ make uninstall
 ```sh
 make undeploy
 ```
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-**NOTE:** Run `make --help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
 ## License
 
