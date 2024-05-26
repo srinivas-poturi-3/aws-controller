@@ -118,7 +118,7 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 	// Use AWS SDK for VM management
 	switch {
-	case vm.GetDeletionTimestamp() != nil:
+	case vm.GetDeletionTimestamp() != nil && vm.Status.Status != string(delete):
 		if controllerutil.ContainsFinalizer(&vm, controllerFinalizer) {
 			// Handle VM deletion
 			err := awsSession.DeleteVM(&vm)
@@ -133,11 +133,6 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 			if ok := controllerutil.RemoveFinalizer(&vm, controllerFinalizer); !ok {
 				log.Error(err, "Failed to remove finalizer for controller")
 				return ctrl.Result{Requeue: true}, nil
-			}
-
-			if err := r.Update(ctx, &vm); err != nil {
-				log.Error(err, "Failed to remove finalizer for controller")
-				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, err
 		}
@@ -166,19 +161,27 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 				log.Error(err, "failed to create VM")
 				return ctrl.Result{}, err
 			}
-			log.Error(err, "unable to get CRD object")
+			vm.Status.Status = string(running)
+			err = r.Status().Update(ctx, &vm)
+			if err != nil {
+				log.Error(err, "failed to update CRD status")
+				return ctrl.Result{}, err
+			}
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 
-		// Update CRD status with VM information (e.g., instance ID)
-		vm.Status.Status = string(running)
+	default:
+		// Handle VM status updates
+		err := awsSession.GetExistingVM(&vm)
+		if err != nil {
+			log.Error(err, "failed to check existing VM")
+			return ctrl.Result{}, err
+		}
 		err = r.Status().Update(ctx, &vm)
 		if err != nil {
 			log.Error(err, "failed to update CRD status")
 			return ctrl.Result{}, err
 		}
-		// }
-
 	}
 
 	return ctrl.Result{}, nil

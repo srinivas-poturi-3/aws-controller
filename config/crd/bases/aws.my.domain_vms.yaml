@@ -50,29 +50,29 @@ spec:
           spec:
             description: VmSpec defines the desired state of Vm
             properties:
-              DryRun:
+              dryRun:
                 type: boolean
-              IamInstanceProfile:
+              iamInstanceProfile:
                 type: string
-              ImageId:
+              imageId:
                 type: string
-              InstanceType:
+              instanceType:
                 type: string
-              KeyName:
+              keyName:
                 type: string
-              MaxCount:
+              maxCount:
                 type: integer
-              MinCount:
+              minCount:
                 type: integer
-              Name:
+              name:
                 type: string
-              SecurityGroupIds:
+              securityGroupIds:
                 items:
                   type: string
                 type: array
-              SubnetId:
+              subnetId:
                 type: string
-              UserData:
+              userData:
                 type: string
             type: object
           status:
@@ -80,9 +80,18 @@ spec:
             properties:
               error:
                 type: string
-              instance:
+              instanceStatus:
                 items:
-                  type: string
+                  properties:
+                    instanceId:
+                      type: string
+                    privateIpAddresses:
+                      type: string
+                    publicIpAddresses:
+                      type: string
+                    state:
+                      type: string
+                  type: object
                 type: array
               status:
                 description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
