@@ -32,7 +32,10 @@ spec:
                 description: Name of the secret containing credentials
                 type: string
               namespace:
-                description: Namespace where the secret resides (optional)
+                description: Namespace where the secret resides
+                type: string
+              region:
+                description: Region of the AWS account
                 type: string
             required:
             - name
@@ -47,32 +50,40 @@ spec:
           spec:
             description: VmSpec defines the desired state of Vm
             properties:
-              imageId:
+              DryRun:
+                type: boolean
+              IamInstanceProfile:
                 type: string
-              instanceType:
+              ImageId:
                 type: string
-              keyName:
+              InstanceType:
                 type: string
-              maxCount:
+              KeyName:
+                type: string
+              MaxCount:
                 type: integer
-              minCount:
+              MinCount:
                 type: integer
-              region:
+              Name:
                 type: string
-              securityGroup:
+              SecurityGroupIds:
+                items:
+                  type: string
+                type: array
+              SubnetId:
                 type: string
-              subnet:
-                type: string
-              userData:
+              UserData:
                 type: string
             type: object
           status:
             description: VmStatus defines the observed state of Vm
             properties:
-              instanceId:
+              error:
                 type: string
-              privateIp:
-                type: string
+              instance:
+                items:
+                  type: string
+                type: array
               status:
                 description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
                   of cluster Important: Run "make" to regenerate code after modifying

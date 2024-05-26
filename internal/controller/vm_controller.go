@@ -19,9 +19,15 @@ package controller
 import (
 	"context"
 
+	"time"
+
+	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	v1 "github.com/srinivas-poturi-3/aws-controller/api/v1"
@@ -34,9 +40,23 @@ type VmReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=aws.my.domain,resources=vms,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=aws.my.domain,resources=vms/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=aws.my.domain,resources=vms/finalizers,verbs=update
+type Status string
+
+const (
+	initialized Status = "Initialized"
+	delete      Status = "Deleted"
+	running     Status = "Running"
+	stopped     Status = "Stopped"
+	pending     Status = "Pending"
+	failed      Status = "Failed"
+)
+const (
+	controllerFinalizer string = "aws.my.controller/finalizer"
+)
+
+//+kubebuilder:rbac:groups=aws.my.controller,resources=vms,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=aws.my.controller,resources=vms/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=aws.my.controller,resources=vms/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -85,45 +105,81 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	// Use AWS SDK for VM management
-	switch {
-	case vm.ObjectMeta.DeletionTimestamp != nil:
-		// Handle VM deletion
-		err := aws.DeleteVM(awsSession, &vm)
-		if err != nil {
-			log.Error(err, "failed to delete VM")
-			return ctrl.Result{}, err
-		}
-		// Update CRD status to reflect deletion
-		vm.Status.Status = "Deleted"
-		err = r.Status().Update(ctx, &vm)
-		return ctrl.Result{}, err
-	default:
-		// Handle VM creation or update
-		existingInstance, err := aws.GetExistingVM(awsSession, &vm)
-		if err != nil {
-			log.Error(err, "failed to check existing VM")
-			return ctrl.Result{}, err
+	if !controllerutil.ContainsFinalizer(&vm, controllerFinalizer) {
+		if ok := controllerutil.AddFinalizer(&vm, controllerFinalizer); !ok {
+			log.Error(err, "Failed to add finalizer into the custom resource")
+			return ctrl.Result{Requeue: true}, nil
 		}
 
-		if existingInstance == nil {
-			// Create VM
-			err := aws.CreateVM(awsSession, &vm)
+		if err = r.Update(ctx, &vm); err != nil {
+			log.Error(err, "Failed to update custom resource to add finalizer")
+			return ctrl.Result{}, err
+		}
+	}
+	// Use AWS SDK for VM management
+	switch {
+	case vm.GetDeletionTimestamp() != nil:
+		if controllerutil.ContainsFinalizer(&vm, controllerFinalizer) {
+			// Handle VM deletion
+			err := awsSession.DeleteVM(&vm)
 			if err != nil {
+				log.Error(err, "failed to delete VM")
+				return ctrl.Result{}, err
+			}
+			// Update CRD status to reflect deletion
+			vm.Status.Status = string(delete)
+			err = r.Status().Update(ctx, &vm)
+
+			if ok := controllerutil.RemoveFinalizer(&vm, controllerFinalizer); !ok {
+				log.Error(err, "Failed to remove finalizer for controller")
+				return ctrl.Result{Requeue: true}, nil
+			}
+
+			if err := r.Update(ctx, &vm); err != nil {
+				log.Error(err, "Failed to remove finalizer for controller")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
+		}
+	case vm.Status.Status == "":
+		// Handle VM creation or update
+		// existingInstance, err := aws.GetExistingVM(awsSession, &vm)
+		// if err != nil {
+		// 	log.Error(err, "failed to check existing VM")
+		// 	return ctrl.Result{}, err
+		// }
+
+		vm.Status.Status = string(initialized)
+		err = r.Status().Update(ctx, &vm)
+		if err != nil {
+			log.Error(err, "failed to update CRD status")
+			return ctrl.Result{}, err
+		}
+		found := &appsv1.Deployment{}
+		err := r.Get(ctx, types.NamespacedName{Name: vm.Name, Namespace: vm.Namespace}, found)
+		if err != nil && apierrors.IsNotFound(err) {
+			// Create VM
+			err = awsSession.CreateVM(&vm)
+			if err != nil {
+				vm.Status.Status = string(failed)
+				r.Status().Update(ctx, &vm)
 				log.Error(err, "failed to create VM")
 				return ctrl.Result{}, err
 			}
-			// Update CRD status with VM information (e.g., instance ID)
-			vm.Status.Status = "Running"
-			err = r.Status().Update(ctx, &vm)
-			if err != nil {
-				log.Error(err, "failed to update CRD status")
-				return ctrl.Result{}, err
-			}
+			log.Error(err, "unable to get CRD object")
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 
+		// Update CRD status with VM information (e.g., instance ID)
+		vm.Status.Status = string(running)
+		err = r.Status().Update(ctx, &vm)
+		if err != nil {
+			log.Error(err, "failed to update CRD status")
+			return ctrl.Result{}, err
+		}
+		// }
+
 	}
-	log.Info("Reconciling Vm")
 
 	return ctrl.Result{}, nil
 }

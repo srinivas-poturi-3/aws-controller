@@ -9,8 +9,18 @@ import (
 	v1 "github.com/srinivas-poturi-3/aws-controller/api/v1"
 )
 
-func CreateVM(sess *session.Session, vm *v1.Vm) error {
-	svc := ec2.New(sess)
+type AwsSession struct {
+	sess *session.Session
+}
+
+func NewAwsSession(sess *session.Session) *AwsSession {
+	return &AwsSession{
+		sess: sess,
+	}
+}
+
+func (c *AwsSession) CreateVM(vm *v1.Vm) error {
+	svc := ec2.New(c.sess)
 
 	// Specify instance details
 	runInput := &ec2.RunInstancesInput{
@@ -19,7 +29,7 @@ func CreateVM(sess *session.Session, vm *v1.Vm) error {
 		MinCount:     aws.Int64(int64(vm.Spec.MinCount)),
 		MaxCount:     aws.Int64(int64(vm.Spec.MaxCount)),
 		KeyName:      aws.String(vm.Spec.KeyName),
-		SubnetId:     aws.String(vm.Spec.Subnet),
+		SubnetId:     aws.String(vm.Spec.SubnetId),
 		// Add other parameters (e.g., security groups, key pair, etc.)
 	}
 
@@ -29,18 +39,33 @@ func CreateVM(sess *session.Session, vm *v1.Vm) error {
 		return err
 	}
 
+	_, errtag := svc.CreateTags(&ec2.CreateTagsInput{
+		Resources: []*string{runOutput.Instances[0].InstanceId},
+		Tags: []*ec2.Tag{
+			{
+				Key:   aws.String("Name"),
+				Value: aws.String(vm.Spec.Name),
+			},
+		},
+	})
+	if errtag != nil {
+		fmt.Println("Could not create tags for instance", runOutput.Instances[0].InstanceId, errtag)
+		return nil
+	}
+
 	// Store instance ID in VM status
-	vm.Status.InstanceId = *runOutput.Instances[0].InstanceId
-	fmt.Printf("Created EC2 instance with ID: %s\n", vm.Status.InstanceId)
+	for i := range runOutput.Instances {
+		vm.Status.Instance = append(vm.Status.Instance, *runOutput.Instances[i].InstanceId)
+	}
+
+	fmt.Printf("Created EC2 instance with ID: %s\n", vm.Status.Instance)
 	return nil
 }
 
-func GetExistingVM(sess *session.Session, vm *v1.Vm) (*ec2.DescribeInstancesOutput, error) {
-	svc := ec2.New(sess)
+func (c *AwsSession) GetExistingVM(vm *v1.Vm) (*ec2.DescribeInstancesOutput, error) {
+	svc := ec2.New(c.sess)
 
-	input := &ec2.DescribeInstancesInput{
-		InstanceIds: []*string{aws.String(vm.Status.InstanceId)},
-	}
+	input := &ec2.DescribeInstancesInput{}
 
 	result, err := svc.DescribeInstances(input)
 	if err != nil {
@@ -51,12 +76,12 @@ func GetExistingVM(sess *session.Session, vm *v1.Vm) (*ec2.DescribeInstancesOutp
 	return result, nil
 }
 
-func DeleteVM(sess *session.Session, vm *v1.Vm) error {
-	svc := ec2.New(sess)
+func (c *AwsSession) DeleteVM(vm *v1.Vm) error {
+	svc := ec2.New(c.sess)
 
 	// Specify instance ID for termination
 	terminateInput := &ec2.TerminateInstancesInput{
-		InstanceIds: []*string{aws.String(vm.Status.InstanceId)},
+		InstanceIds: aws.StringSlice(vm.Status.Instance),
 	}
 
 	_, err := svc.TerminateInstances(terminateInput)
@@ -65,7 +90,7 @@ func DeleteVM(sess *session.Session, vm *v1.Vm) error {
 
 	}
 
-	fmt.Printf("Terminated EC2 instance with ID: %s\n", vm.Status.InstanceId)
+	fmt.Printf("Terminated EC2 instance with ID: %s\n", vm.Status.Instance)
 
 	return nil
 }
