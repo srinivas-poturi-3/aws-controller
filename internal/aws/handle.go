@@ -55,33 +55,55 @@ func (c *AwsSession) CreateVM(vm *v1.Vm) error {
 
 	// Store instance ID in VM status
 	for i := range runOutput.Instances {
-		vm.Status.Instance = append(vm.Status.Instance, *runOutput.Instances[i].InstanceId)
+		vm.Status.InstanceStatus = append(vm.Status.InstanceStatus, v1.InstanceStatus{
+			InstanceId:         *runOutput.Instances[i].InstanceId,
+			State:              *runOutput.Instances[i].State.Name,
+			PrivateIpAddresses: *runOutput.Instances[i].PrivateIpAddress,
+			PublicIpAddresses:  *runOutput.Instances[i].PublicIpAddress,
+		})
 	}
 
-	fmt.Printf("Created EC2 instance with ID: %s\n", vm.Status.Instance)
 	return nil
 }
 
-func (c *AwsSession) GetExistingVM(vm *v1.Vm) (*ec2.DescribeInstancesOutput, error) {
+func (c *AwsSession) GetExistingVM(vm *v1.Vm) error {
 	svc := ec2.New(c.sess)
 
-	input := &ec2.DescribeInstancesInput{}
+	instancesIds := make([]string, len(vm.Status.InstanceStatus))
+	for i, id := range vm.Status.InstanceStatus {
+		instancesIds[i] = id.InstanceId
+	}
+	input := &ec2.DescribeInstancesInput{InstanceIds: aws.StringSlice(instancesIds)}
 
 	result, err := svc.DescribeInstances(input)
 	if err != nil {
 		fmt.Printf("Error describing EC2 instance: %v\n", err)
-		return nil, err
+		return err
 	}
-
-	return result, nil
+	// Store instance ID in VM status
+	for i := range result.Reservations {
+		for j := range result.Reservations[i].Instances {
+			vm.Status.InstanceStatus = append(vm.Status.InstanceStatus, v1.InstanceStatus{
+				InstanceId:         *result.Reservations[i].Instances[j].InstanceId,
+				State:              *result.Reservations[i].Instances[j].State.Name,
+				PrivateIpAddresses: *result.Reservations[i].Instances[j].PrivateIpAddress,
+				PublicIpAddresses:  *result.Reservations[i].Instances[j].PublicIpAddress,
+			})
+		}
+	}
+	return nil
 }
 
 func (c *AwsSession) DeleteVM(vm *v1.Vm) error {
 	svc := ec2.New(c.sess)
 
+	instancesIds := make([]string, len(vm.Status.InstanceStatus))
+	for i, id := range vm.Status.InstanceStatus {
+		instancesIds[i] = id.InstanceId
+	}
 	// Specify instance ID for termination
 	terminateInput := &ec2.TerminateInstancesInput{
-		InstanceIds: aws.StringSlice(vm.Status.Instance),
+		InstanceIds: aws.StringSlice(instancesIds),
 	}
 
 	_, err := svc.TerminateInstances(terminateInput)
@@ -90,7 +112,7 @@ func (c *AwsSession) DeleteVM(vm *v1.Vm) error {
 
 	}
 
-	fmt.Printf("Terminated EC2 instance with ID: %s\n", vm.Status.Instance)
+	fmt.Printf("Terminated EC2 instance with ID: %s\n", instancesIds)
 
 	return nil
 }

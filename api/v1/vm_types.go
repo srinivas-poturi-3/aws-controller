@@ -28,17 +28,17 @@ type VmSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Name               string   `json:"Name,omitempty"`
-	MaxCount           int      `json:"MaxCount,omitempty"`
-	MinCount           int      `json:"MinCount,omitempty"`
-	ImageId            string   `json:"ImageId,omitempty"`
-	InstanceType       string   `json:"InstanceType,omitempty"`
-	KeyName            string   `json:"KeyName,omitempty"`
-	SecurityGroupIds   []string `json:"SecurityGroupIds,omitempty"`
-	SubnetId           string   `json:"SubnetId,omitempty"`
-	UserData           string   `json:"UserData,omitempty"`
-	DryRun             bool     `json:"DryRun,omitempty"`
-	IamInstanceProfile string   `json:"IamInstanceProfile,omitempty"`
+	Name               string   `json:"name,omitempty"`
+	MaxCount           int      `json:"maxCount,omitempty"`
+	MinCount           int      `json:"minCount,omitempty"`
+	ImageId            string   `json:"imageId,omitempty"`
+	InstanceType       string   `json:"instanceType,omitempty"`
+	KeyName            string   `json:"keyName,omitempty"`
+	SecurityGroupIds   []string `json:"securityGroupIds,omitempty"`
+	SubnetId           string   `json:"subnetId,omitempty"`
+	UserData           string   `json:"userData,omitempty"`
+	DryRun             bool     `json:"dryRun,omitempty"`
+	IamInstanceProfile string   `json:"iamInstanceProfile,omitempty"`
 	// NetworkInterface              []ec2.InstanceNetworkInterfaceSpecification `json:"NetworkInterface,omitempty"`
 	// BlockDeviceMapping            ec2.BlockDeviceMapping                      `json:"BlockDeviceMapping,omitempty"`
 	// MetadataOptions               ec2.InstanceMetadataOptionsRequest          `json:"MetadataOptions,omitempty"`
@@ -49,9 +49,16 @@ type VmSpec struct {
 type VmStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Status   string   `json:"status,omitempty"`
-	Instance []string `json:"instance,omitempty"`
-	Error    string   `json:"error,omitempty"`
+	Status         string           `json:"status,omitempty"`
+	Error          string           `json:"error,omitempty"`
+	InstanceStatus []InstanceStatus `json:"instanceStatus,omitempty"`
+}
+
+type InstanceStatus struct {
+	InstanceId         string `json:"instanceId,omitempty"`
+	State              string `json:"state,omitempty"`
+	PrivateIpAddresses string `json:"privateIpAddresses,omitempty"`
+	PublicIpAddresses  string `json:"publicIpAddresses,omitempty"`
 }
 
 // CredentialsSecret defines the reference to the secret containing AWS credentials
