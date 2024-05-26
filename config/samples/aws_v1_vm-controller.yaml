@@ -6,9 +6,9 @@ metadata:
     app.kubernetes.io/part-of: vm-controller
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: vm-controller
-  name: vm-controller-sample
+  name: vm-controller-sample-01
 spec:
-  Name: "ControllerEC2"
+  name: "ControllerEC2"
   imageId: "ami-0f58b397bc5c1f2e8"
   instanceType: "t2.micro"
   # KeyName has to be created in AWS console

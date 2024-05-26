@@ -56,10 +56,8 @@ func (c *AwsSession) CreateVM(vm *v1.Vm) error {
 	// Store instance ID in VM status
 	for i := range runOutput.Instances {
 		vm.Status.InstanceStatus = append(vm.Status.InstanceStatus, v1.InstanceStatus{
-			InstanceId:         *runOutput.Instances[i].InstanceId,
-			State:              *runOutput.Instances[i].State.Name,
-			PrivateIpAddresses: *runOutput.Instances[i].PrivateIpAddress,
-			PublicIpAddresses:  *runOutput.Instances[i].PublicIpAddress,
+			InstanceId: *runOutput.Instances[i].InstanceId,
+			State:      *runOutput.Instances[i].State.Name,
 		})
 	}
 
@@ -80,15 +78,21 @@ func (c *AwsSession) GetExistingVM(vm *v1.Vm) error {
 		fmt.Printf("Error describing EC2 instance: %v\n", err)
 		return err
 	}
+	vm.Status.InstanceStatus = []v1.InstanceStatus{}
 	// Store instance ID in VM status
 	for i := range result.Reservations {
 		for j := range result.Reservations[i].Instances {
-			vm.Status.InstanceStatus = append(vm.Status.InstanceStatus, v1.InstanceStatus{
-				InstanceId:         *result.Reservations[i].Instances[j].InstanceId,
-				State:              *result.Reservations[i].Instances[j].State.Name,
-				PrivateIpAddresses: *result.Reservations[i].Instances[j].PrivateIpAddress,
-				PublicIpAddresses:  *result.Reservations[i].Instances[j].PublicIpAddress,
-			})
+			instance := v1.InstanceStatus{
+				InstanceId: *result.Reservations[i].Instances[j].InstanceId,
+				State:      *result.Reservations[i].Instances[j].State.Name,
+			}
+			if result.Reservations[i].Instances[j].PrivateIpAddress != nil {
+				instance.PrivateIpAddresses = *result.Reservations[i].Instances[j].PrivateIpAddress
+			}
+			if result.Reservations[i].Instances[j].PublicIpAddress != nil {
+				instance.PublicIpAddresses = *result.Reservations[i].Instances[j].PublicIpAddress
+			}
+			vm.Status.InstanceStatus = append(vm.Status.InstanceStatus, instance)
 		}
 	}
 	return nil

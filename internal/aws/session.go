@@ -22,15 +22,13 @@ type Creds struct {
 
 const (
 	defaultRegion = "us-east-1"
-	accessID      = "accessID"
-	accessKey     = "accessKey"
-	tokenKey      = "tokenKey"
+	accessID      = "access_id"
+	accessKey     = "access_key"
 )
 
 func GetSession(ctx context.Context, creds Creds) (*AwsSession, error) {
 	os.Setenv("AWS_ACCESS_KEY_ID", creds.accessID)
 	os.Setenv("AWS_SECRET_ACCESS_KEY", creds.accessKey)
-	os.Setenv("AWS_SECRET_ACCESS_TOKEN", creds.accessToken)
 
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(creds.region),
@@ -59,9 +57,6 @@ func GetAWSCredentials(ctx context.Context, k8sClient client.Client, secretRef *
 	if _, ok := secret.Data[accessKey]; !ok {
 		return Creds{}, fmt.Errorf("secret %s missing accessKey data", secretKey)
 	}
-	if _, ok := secret.Data[tokenKey]; !ok {
-		return Creds{}, fmt.Errorf("secret %s missing secretKey data", secretKey)
-	}
 
 	if secretRef.Region == "" {
 		creds.region = defaultRegion
@@ -71,7 +66,6 @@ func GetAWSCredentials(ctx context.Context, k8sClient client.Client, secretRef *
 
 	creds.accessID = string(secret.Data[accessID])
 	creds.accessKey = string(secret.Data[accessKey])
-	creds.accessToken = string(secret.Data[tokenKey])
 
 	return creds, nil
 }
