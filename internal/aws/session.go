@@ -14,21 +14,22 @@ import (
 )
 
 type Creds struct {
-	accessID    string
-	accessKey   string
-	accessToken string
-	region      string
+	accessID  string
+	accessKey string
+	region    string
 }
 
 const (
-	defaultRegion = "us-east-1"
-	accessID      = "access_id"
-	accessKey     = "access_key"
+	defaultRegion      = "us-east-1"
+	accessID           = "access_id"
+	accessKey          = "access_key"
+	awsAccessKeyID     = "AWS_ACCESS_KEY_ID"
+	awsSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
 )
 
 func GetSession(ctx context.Context, creds Creds) (*AwsSession, error) {
-	os.Setenv("AWS_ACCESS_KEY_ID", creds.accessID)
-	os.Setenv("AWS_SECRET_ACCESS_KEY", creds.accessKey)
+	os.Setenv(awsAccessKeyID, creds.accessID)
+	os.Setenv(awsSecretAccessKey, creds.accessKey)
 
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(creds.region),
