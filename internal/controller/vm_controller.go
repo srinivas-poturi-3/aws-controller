@@ -85,11 +85,13 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	// Check if credentials secret is specified
 	if secretRef == nil {
 		log.Info("Credentials secret not specified in CRD. Skipping AWS actions.")
-		// Update CRD status to reflect (optional)
+		vm.Status.Status = string(failed)
+		vm.Status.Error = "Credentials secret not specified in CRD"
+		r.Status().Update(ctx, &vm)
 		return ctrl.Result{}, nil
 	}
 
-	// Retrieve AWS credentials (implement getAWSCredentials function)
+	// Retrieve AWS credentials from secret
 	secret, err := aws.GetAWSCredentials(ctx, r.Client, secretRef)
 	if err != nil {
 		log.Error(err, "failed to retrieve AWS credentials")
@@ -114,11 +116,11 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 			return ctrl.Result{}, err
 		}
 	}
-	// Use AWS SDK for VM management
+	// Handle VM management
 	switch {
+	// Handle VM deletion
 	case vm.GetDeletionTimestamp() != nil && vm.Status.Status == string(running):
 		if controllerutil.ContainsFinalizer(&vm, controllerFinalizer) {
-			// Handle VM deletion
 			err := awsSession.DeleteVM(&vm)
 			if err != nil {
 				log.Error(err, "failed to delete VM")
@@ -134,13 +136,8 @@ func (r *VmReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 			}
 			return ctrl.Result{}, err
 		}
+	// Handle VM creation
 	case vm.Status.Status == "":
-		// Handle VM creation or update
-		// existingInstance, err := aws.GetExistingVM(awsSession, &vm)
-		// if err != nil {
-		// 	log.Error(err, "failed to check existing VM")
-		// 	return ctrl.Result{}, err
-		// }
 
 		vm.Status.Status = string(initialized)
 		err = r.Status().Update(ctx, &vm)

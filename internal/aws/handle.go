@@ -13,16 +13,18 @@ type AwsSession struct {
 	sess *session.Session
 }
 
+// NewAwsSession creates a new AWS session.
 func NewAwsSession(sess *session.Session) *AwsSession {
 	return &AwsSession{
 		sess: sess,
 	}
 }
 
+// CreateVM creates a new EC2 instance with given specs.
 func (c *AwsSession) CreateVM(vm *v1.Vm) error {
 	svc := ec2.New(c.sess)
 
-	// Specify instance details
+	// Specifying instance details
 	runInput := &ec2.RunInstancesInput{
 		ImageId:      aws.String(vm.Spec.ImageId),
 		InstanceType: aws.String(vm.Spec.InstanceType),
@@ -30,7 +32,6 @@ func (c *AwsSession) CreateVM(vm *v1.Vm) error {
 		MaxCount:     aws.Int64(int64(vm.Spec.MaxCount)),
 		KeyName:      aws.String(vm.Spec.KeyName),
 		SubnetId:     aws.String(vm.Spec.SubnetId),
-		// Add other parameters (e.g., security groups, key pair, etc.)
 	}
 
 	runOutput, err := svc.RunInstances(runInput)
@@ -64,6 +65,7 @@ func (c *AwsSession) CreateVM(vm *v1.Vm) error {
 	return nil
 }
 
+// GetExistingVM gets the existing EC2 instance details.
 func (c *AwsSession) GetExistingVM(vm *v1.Vm) error {
 	svc := ec2.New(c.sess)
 
@@ -79,7 +81,7 @@ func (c *AwsSession) GetExistingVM(vm *v1.Vm) error {
 		return err
 	}
 	vm.Status.InstanceStatus = []v1.InstanceStatus{}
-	// Store instance ID in VM status
+	// Store details in VM status
 	for i := range result.Reservations {
 		for j := range result.Reservations[i].Instances {
 			instance := v1.InstanceStatus{
@@ -98,6 +100,7 @@ func (c *AwsSession) GetExistingVM(vm *v1.Vm) error {
 	return nil
 }
 
+// DeleteVM deletes the existing EC2 instance.
 func (c *AwsSession) DeleteVM(vm *v1.Vm) error {
 	svc := ec2.New(c.sess)
 
@@ -105,7 +108,7 @@ func (c *AwsSession) DeleteVM(vm *v1.Vm) error {
 	for i, id := range vm.Status.InstanceStatus {
 		instancesIds[i] = id.InstanceId
 	}
-	// Specify instance ID for termination
+	// Specifying instance ID for termination
 	terminateInput := &ec2.TerminateInstancesInput{
 		InstanceIds: aws.StringSlice(instancesIds),
 	}
